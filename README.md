@@ -16,6 +16,10 @@ cargo install
 RUST_LOG=INFO cargo run
 ```
 
+## Use
+
+visit http://localhost:3000/qr?content=hello,world
+
 ## Author
 
 Du Yixian <duyixian1234@qq.com>
