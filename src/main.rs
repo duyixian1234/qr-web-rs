@@ -1,4 +1,10 @@
-use axum::{extract::Query, response::Html, routing::get, Router};
+use axum::{
+    extract::Query,
+    http::header,
+    response::{Headers, Html, IntoResponse},
+    routing::get,
+    Router,
+};
 use image::{codecs::png::PngEncoder, Luma};
 use qrcode::QrCode;
 use serde::Deserialize;
@@ -12,7 +18,9 @@ struct Params {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    let app = Router::new().route("/qr", get(handler));
+    let app = Router::new()
+        .route("/qr", get(handler))
+        .route("/api/qr", get(handler_api));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
     tracing::info!("Listening on http://{}", addr);
@@ -30,6 +38,19 @@ async fn handler(Query(params): Query<Params>) -> Html<String> {
         params.content,
         base64::encode(&buffer)
     ))
+}
+async fn handler_api(Query(params): Query<Params>) -> impl IntoResponse {
+    let buffer = gen_qr_code(params.content.as_str());
+
+    let headers = Headers([
+        (header::CONTENT_TYPE, "image/png"),
+        (
+            header::CONTENT_DISPOSITION,
+            "attachment; filename=\"qr.png\"",
+        ),
+    ]);
+
+    (headers, buffer)
 }
 
 fn gen_qr_code(content: &str) -> Vec<u8> {
