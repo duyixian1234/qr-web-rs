@@ -1,33 +1,27 @@
 use axum::{
     extract::Query,
     http::header,
-    response::{Headers, Html, IntoResponse},
+    response::{AppendHeaders, Html, IntoResponse},
     routing::get,
     Router,
 };
 use image::{codecs::png::PngEncoder, Luma};
 use qrcode::QrCode;
 use serde::Deserialize;
-use std::{io::Write, net::SocketAddr};
+use std::io::Write;
 
 #[derive(Debug, Deserialize)]
 struct Params {
     content: String,
 }
 
-#[tokio::main]
-async fn main() {
-    tracing_subscriber::fmt::init();
+#[shuttle_runtime::main]
+async fn main() -> shuttle_axum::ShuttleAxum {
     let app = Router::new()
         .route("/qr", get(handler))
         .route("/api/qr", get(handler_api));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    tracing::info!("Listening on http://{}", addr);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    Ok(app.into())
 }
 
 async fn handler(Query(params): Query<Params>) -> Html<String> {
@@ -42,7 +36,7 @@ async fn handler(Query(params): Query<Params>) -> Html<String> {
 async fn handler_api(Query(params): Query<Params>) -> impl IntoResponse {
     let buffer = gen_qr_code(params.content.as_str());
 
-    let headers = Headers([
+    let headers = AppendHeaders([
         (header::CONTENT_TYPE, "image/png"),
         (
             header::CONTENT_DISPOSITION,
